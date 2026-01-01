@@ -466,6 +466,18 @@ class ASTTransformer:
             cache_line = 'local ini = system_ini()'
             new_name = 'ini'
             call_pattern = 'system_ini()'
+        elif pattern == 'repeated_device':
+            cache_line = 'local dev = device()'
+            new_name = 'dev'
+            call_pattern = 'device()'
+        elif pattern == 'repeated_get_console':
+            cache_line = 'local console = get_console()'
+            new_name = 'console'
+            call_pattern = 'get_console()'
+        elif pattern == 'repeated_get_hud':
+            cache_line = 'local hud = get_hud()'
+            new_name = 'hud'
+            call_pattern = 'get_hud()'
         elif pattern == 'repeated_level_object_by_id':
             cache_line = suggestion if suggestion else 'local obj = level.object_by_id(id)'
             new_name = 'obj'

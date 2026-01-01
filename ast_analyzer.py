@@ -968,7 +968,8 @@ class ASTAnalyzer:
     def _analyze_repeated_calls_in_scope(self):
         """Find repeated expensive calls within function scope."""
         # expensive calls to track
-        expensive_calls = {'db.actor', 'time_global', 'alife', 'system_ini', 'level.object_by_id'}
+        expensive_calls = {'db.actor', 'time_global', 'alife', 'system_ini', 'level.object_by_id',
+                           'device', 'get_console', 'get_hud'}
 
         # group by function scope
         scope_calls: Dict[Scope, Dict[str, List[CallInfo]]] = defaultdict(lambda: defaultdict(list))
@@ -1002,6 +1003,12 @@ class ASTAnalyzer:
                         suggestion = 'local sim = alife()'
                     elif name == 'system_ini':
                         suggestion = 'local ini = system_ini()'
+                    elif name == 'device':
+                        suggestion = 'local dev = device()'
+                    elif name == 'get_console':
+                        suggestion = 'local console = get_console()'
+                    elif name == 'get_hud':
+                        suggestion = 'local hud = get_hud()'
                     elif name == 'level.object_by_id':
                         # check if all calls use the same argument
                         args_strs = []

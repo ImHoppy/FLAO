@@ -276,6 +276,69 @@
             border-color: var(--accent-cyan);
         }
 
+        /* [ Sort Controls ]-- */
+        .sort-section {
+            margin-bottom: 20px;
+        }
+
+        .sort-section h3 {
+            color: var(--text-secondary);
+            font-family: var(--font-main);
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 10px;
+            font-weight: 600;
+        }
+
+        .sort-controls {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .sort-select {
+            width: 100%;
+            padding: 8px 10px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            font-family: var(--font-main);
+            font-size: 0.85rem;
+            cursor: pointer;
+        }
+
+        .sort-select:focus {
+            outline: none;
+            border-color: var(--accent-cyan);
+        }
+
+        .sort-direction {
+            display: flex;
+            gap: 8px;
+        }
+
+        .sort-dir-btn {
+            flex: 1;
+            padding: 6px 10px;
+            background: transparent;
+            border: 1px solid var(--border-color);
+            color: var(--text-secondary);
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .sort-dir-btn:hover {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .sort-dir-btn.active {
+            background: rgba(88, 166, 255, 0.15);
+            border-color: var(--accent-cyan);
+            color: var(--accent-cyan);
+        }
+
         /* [ Typography ]-- */
         h1 {
             color: var(--text-primary);
@@ -319,6 +382,24 @@
 
         .header p {
             color: var(--text-secondary);
+        }
+
+        .header h1 {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .alao-logo {
+            background: #238636;
+            color: white;
+            padding: 8px 18px;
+            border-radius: 8px;
+            font-size: 1.4rem;
+            font-weight: 700;
+            letter-spacing: 1px;
+            border: 2px solid #2ea043;
+            box-shadow: 0 2px 8px rgba(35, 134, 54, 0.3);
         }
 
         /* [ Summary Box ]-- */
@@ -423,20 +504,21 @@
             display: none;
         }
 
-        .finding.green {
-            border-left: 3px solid var(--green);
+        /* impact-based left border colors */
+        .finding.impact-border-critical {
+            border-left: 3px solid #ff4444;
         }
 
-        .finding.yellow {
-            border-left: 3px solid var(--yellow);
+        .finding.impact-border-high {
+            border-left: 3px solid #ff8800;
         }
 
-        .finding.red {
-            border-left: 3px solid var(--red);
+        .finding.impact-border-medium {
+            border-left: 3px solid #ffcc00;
         }
 
-        .finding.debug {
-            border-left: 3px solid var(--blue);
+        .finding.impact-border-low {
+            border-left: 3px solid #888888;
         }
 
         .finding-header {
@@ -548,9 +630,9 @@
             display: none;
             margin: 10px 0 0 55px;
             padding: 10px 12px;
-            background: var(--bg-code);
-            border: 1px solid var(--border-color);
-            border-radius: 4px;
+            background: #212830;
+            border: 1px solid #3D444D;
+            border-radius: 0;
             font-family: var(--font-mono);
             font-size: 0.8rem;
             overflow-x: auto;
@@ -563,10 +645,10 @@
         }
 
         .code-snippet .highlight {
-            background: rgba(88, 166, 255, 0.25);
+            background: #212830;
             color: #58a6ff;
             padding: 1px 4px;
-            border-radius: 3px;
+            border-radius: 0;
             font-weight: 600;
             border-bottom: 2px solid #58a6ff;
         }
@@ -574,6 +656,67 @@
         /* [ Top Issues Table ]-- */
         .top-issues {
             margin-top: 20px;
+        }
+
+        .top-issues-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid var(--border-color);
+            margin-bottom: 0;
+        }
+
+        .top-issues-header::before {
+            content: none !important;
+        }
+
+        .top-issues-header .collapse-indicator {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            transition: transform 0.2s;
+        }
+
+        .top-issues-header.collapsed .collapse-indicator {
+            transform: rotate(-90deg);
+        }
+
+        .top-issues-content {
+            overflow: hidden;
+            transition: max-height 0.3s ease;
+        }
+
+        .top-issues-content.collapsed {
+            display: none;
+        }
+
+        .impact-badge {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .impact-badge.impact-critical {
+            background: rgba(255, 68, 68, 0.2);
+            color: #ff4444;
+        }
+
+        .impact-badge.impact-high {
+            background: rgba(255, 136, 0, 0.2);
+            color: #ff8800;
+        }
+
+        .impact-badge.impact-medium {
+            background: rgba(255, 204, 0, 0.2);
+            color: #ffcc00;
+        }
+
+        .impact-badge.impact-low {
+            background: rgba(136, 136, 136, 0.2);
+            color: #888888;
         }
 
         .issues-table {
@@ -724,7 +867,22 @@
             <img src="https://images.gog-statics.com/fdb7d76818c9b4df983d3b79e07b4f577f9cb0416149ef9d1d203fd2dbd34aac.jpg" style="width: 100%;">
 
             <div class="search-box">
-                <input type="text" class="search-input" id="searchInput" placeholder="Search mods..." oninput="filterBySearch()">
+                <input type="text" class="search-input" id="searchInput" placeholder="Search mods or scripts..." oninput="filterBySearch()">
+            </div>
+            
+            <div class="sort-section">
+                <h3>Sort By</h3>
+                <div class="sort-controls">
+                    <select class="sort-select" id="sortSelect" onchange="sortMods()">
+                        <option value="alpha">Alphabetically</option>
+                        <option value="issues">Total Issues</option>
+                        <option value="impact">Performance Impact</option>
+                    </select>
+                    <div class="sort-direction">
+                        <button class="sort-dir-btn active" id="sortAsc" onclick="setSortDirection('asc')">↑ ASC</button>
+                        <button class="sort-dir-btn" id="sortDesc" onclick="setSortDirection('desc')">↓ DESC</button>
+                    </div>
+                </div>
             </div>
             
             <div class="quick-stats">
@@ -887,11 +1045,24 @@
             
             document.querySelectorAll('.mod-card').forEach(mod => {
                 const modName = mod.querySelector('h2').textContent.toLowerCase();
-                const matchesSearch = !filters.search || modName.includes(filters.search);
+                
+                // collect all script names in this mod
+                const scriptNames = Array.from(mod.querySelectorAll('.file-section h3'))
+                    .map(h3 => h3.textContent.toLowerCase());
+                
+                // match search against mod name OR any script name
+                const matchesSearch = !filters.search || 
+                    modName.includes(filters.search) ||
+                    scriptNames.some(name => name.includes(filters.search));
                 
                 let modHasVisibleFindings = false;
                 
                 mod.querySelectorAll('.file-section').forEach(fileSection => {
+                    const fileName = fileSection.querySelector('h3')?.textContent.toLowerCase() || '';
+                    const fileMatchesSearch = !filters.search || 
+                        modName.includes(filters.search) ||
+                        fileName.includes(filters.search);
+                    
                     let fileHasVisibleFindings = false;
                     
                     fileSection.querySelectorAll('.finding').forEach(finding => {
@@ -903,7 +1074,7 @@
                         const impactOk = filters.impact[impact];
                         const patternOk = filters.patterns[pattern] !== false;
                         
-                        const isVisible = severityOk && impactOk && patternOk && matchesSearch;
+                        const isVisible = severityOk && impactOk && patternOk && fileMatchesSearch;
                         finding.classList.toggle('hidden', !isVisible);
                         
                         if (isVisible) {
@@ -1051,6 +1222,76 @@
                 sidebar.classList.remove('open');
             }
         });
+
+        // [ Sorting functionality ]--
+        let currentSortDirection = 'asc';
+
+        function setSortDirection(dir) {
+            currentSortDirection = dir;
+            document.getElementById('sortAsc').classList.toggle('active', dir === 'asc');
+            document.getElementById('sortDesc').classList.toggle('active', dir === 'desc');
+            sortMods();
+        }
+
+        function getModImpactScore(mod) {
+            // weight: critical=4, high=3, medium=2, low=1
+            const findings = mod.querySelectorAll('.finding:not(.hidden)');
+            let score = 0;
+            findings.forEach(f => {
+                const impact = f.dataset.impact || 'low';
+                switch(impact) {
+                    case 'critical': score += 4; break;
+                    case 'high': score += 3; break;
+                    case 'medium': score += 2; break;
+                    case 'low': score += 1; break;
+                }
+            });
+            return score;
+        }
+
+        function getModIssueCount(mod) {
+            return mod.querySelectorAll('.finding:not(.hidden)').length;
+        }
+
+        function sortMods() {
+            const sortBy = document.getElementById('sortSelect').value;
+            const container = document.querySelector('.main-content');
+            const mods = Array.from(document.querySelectorAll('.mod-card'));
+            
+            mods.sort((a, b) => {
+                let valA, valB;
+                
+                switch(sortBy) {
+                    case 'alpha':
+                        valA = a.querySelector('h2').textContent.toLowerCase();
+                        valB = b.querySelector('h2').textContent.toLowerCase();
+                        break;
+                    case 'issues':
+                        valA = getModIssueCount(a);
+                        valB = getModIssueCount(b);
+                        break;
+                    case 'impact':
+                        valA = getModImpactScore(a);
+                        valB = getModImpactScore(b);
+                        break;
+                    default:
+                        valA = a.querySelector('h2').textContent.toLowerCase();
+                        valB = b.querySelector('h2').textContent.toLowerCase();
+                }
+                
+                let result;
+                if (typeof valA === 'string') {
+                    result = valA.localeCompare(valB);
+                } else {
+                    result = valA - valB;
+                }
+                
+                return currentSortDirection === 'desc' ? -result : result;
+            });
+            
+            // reorder DOM elements
+            mods.forEach(mod => container.appendChild(mod));
+        }
     </script>
     {% endblock %}
 </body>

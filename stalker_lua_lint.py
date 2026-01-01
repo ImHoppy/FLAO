@@ -384,7 +384,7 @@ def main():
 
             # prepare work items
             work_items = [
-                (script_path, args.backup, args.fix_debug, args.fix_yellow, False)
+                (script_path, args.backup, args.fix_debug, args.fix_yellow)
                 for mod_name, script_path in all_files
             ]
 
@@ -484,7 +484,7 @@ def main():
         print(f"Files skipped (timeout/error): {files_skipped}")
     if parse_errors > 0:
         print(f"Files with parse errors: {parse_errors}")
-    if (args.fix or args.fix_debug or args.fix_yellow) and not args.dry_run:
+    if (args.fix or args.fix_debug or args.fix_yellow) :
         print(f"Files modified: {files_modified}")
         print(f"Total edits applied: {total_edits}")
 
@@ -504,7 +504,7 @@ def main():
         print("Tip: Run with --fix-yellow to also apply YELLOW fixes (unsafe)")
     if debug_count > 0 and not args.fix_debug:
         print("Tip: Run with --fix-debug to comment out DEBUG statements")
-    if (args.fix or args.fix_debug or args.fix_yellow) and not args.dry_run:
+    if (args.fix or args.fix_debug or args.fix_yellow) :
         print("Tip: Run with --revert to undo all changes using .bak files")
 
 

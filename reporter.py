@@ -161,7 +161,7 @@ class Reporter:
         )
 
     def get_top_issues(self, limit: int = 10) -> List[tuple]:
-        """Get top issues by pattern count with severity info."""
+        """Get top issues by pattern count with severity and impact info."""
         pattern_counts = defaultdict(int)
         pattern_severity = {}
         for mod in self.findings.values():
@@ -174,7 +174,8 @@ class Reporter:
         result = []
         for pattern, count in sorted(pattern_counts.items(), key=lambda x: -x[1])[:limit]:
             severity = pattern_severity.get(pattern, 'RED')
-            result.append((pattern, count, severity))
+            impact = get_performance_impact(pattern)
+            result.append((pattern, count, severity, impact))
         return result
 
     def get_mod_severity_breakdown(self, mod_name: str) -> dict:
@@ -208,7 +209,7 @@ class Reporter:
         top_issues = self.get_top_issues()
         if top_issues:
             print("\nTop issues by type:")
-            for pattern, count, severity in top_issues:
+            for pattern, count, severity, impact in top_issues:
                 marker = {
                     'GREEN': '[G]',
                     'YELLOW': '[Y]',
@@ -304,8 +305,8 @@ class Reporter:
                         pattern_counts[f.pattern_name] = 0
                     pattern_counts[f.pattern_name] += 1
 
-        # sort patterns by count
-        sorted_patterns = sorted(pattern_counts.items(), key=lambda x: -x[1])
+        # sort patterns alphabetically
+        sorted_patterns = sorted(pattern_counts.items(), key=lambda x: x[0].lower())
 
         return {
             'generated': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
