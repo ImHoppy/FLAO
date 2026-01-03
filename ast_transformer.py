@@ -681,8 +681,8 @@ class ASTTransformer:
                 if paren_depth > 0:
                     return  # inside function call arguments, skip optimization
 
-                # check if calls span different if/else branches
-                # look for else/elseif between first and last call
+                # check if calls span different blocks
+                # look for else/elseif/end between first and last call
                 last_call = calls[-1]
                 if last_call.line > first_call.line:
                     first_indent = self._get_indent_at_line(first_call.line)
@@ -695,10 +695,10 @@ class ASTTransformer:
                             check_stripped = check_text.lstrip()
                             check_indent_len = len(check_text) - len(check_stripped)
                             
-                            # if else/elseif at same or shallower indent, calls are in different branches
+                            # if else/elseif/end at same or shallower indent, calls are in different blocks
                             if check_indent_len <= first_indent_len:
                                 first_word = check_stripped.split()[0] if check_stripped.split() else ''
-                                if first_word in ('else', 'elseif'):
+                                if first_word in ('else', 'elseif', 'end'):
                                     has_branch_between_calls = True
                                     break
 
