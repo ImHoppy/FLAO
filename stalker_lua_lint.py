@@ -42,7 +42,7 @@ from pathlib import Path
 from datetime import datetime
 from concurrent.futures import ThreadPoolExecutor, ProcessPoolExecutor, TimeoutError as FuturesTimeoutError, as_completed, BrokenExecutor
 
-from discovery import discover_mods
+from discovery import discover_mods, discover_direct
 from ast_analyzer import analyze_file
 from ast_transformer import transform_file
 from reporter import Reporter
@@ -169,6 +169,11 @@ def main():
         action="store_true",
         help="Remove all .bak backup files"
     )
+    parser.add_argument(
+        "--direct",
+        action="store_true",
+        help="Process path directly (single .script file or folder with scripts, no gamedata/scripts structure)"
+    )
 
     args = parser.parse_args()
 
@@ -190,14 +195,23 @@ def main():
 
     # discover mods and scripts
     print(f"\nScanning: {mods_path}")
-    mods = discover_mods(mods_path)
+    if args.direct:
+        mods = discover_direct(mods_path)
+    else:
+        mods = discover_mods(mods_path)
 
     if not mods:
-        print("No mods with scripts found.")
+        if args.direct:
+            print("No scripts found in path.")
+        else:
+            print("No mods with scripts found.")
         sys.exit(0)
 
     total_scripts = sum(len(scripts) for scripts in mods.values())
-    print(f"Found {len(mods)} mods with {total_scripts} script files\n")
+    if args.direct:
+        print(f"Found {total_scripts} script files (direct mode)\n")
+    else:
+        print(f"Found {len(mods)} mods with {total_scripts} script files\n")
 
     # handle backup operations
     if args.list_backups or args.revert or args.clean_backups:

@@ -114,3 +114,37 @@ def get_mod_info(mod_path: Path) -> dict:
             pass
 
     return info
+
+
+def discover_direct(path: Path) -> Dict[str, List[Path]]:
+    """
+    Discover scripts directly without gamedata/scripts structure.
+    
+    - If path is a .script/.lua file, return just that file
+    - If path is a directory, find all scripts in it (recursively)
+    
+    Returns dict mapping mod name -> list of script file paths
+    """
+    path = Path(path)
+    mods = {}
+    
+    # single file
+    if path.is_file():
+        if path.suffix in ('.script', '.lua'):
+            mods["(direct)"] = [path]
+        return mods
+    
+    # directory - find all scripts
+    if path.is_dir():
+        scripts = []
+        for ext in ("*.lua", "*.script"):
+            scripts.extend(path.glob(ext))
+        for ext in ("**/*.lua", "**/*.script"):
+            for f in path.glob(ext):
+                if f not in scripts:
+                    scripts.append(f)
+        
+        if scripts:
+            mods["(direct)"] = sorted(scripts)
+    
+    return mods
