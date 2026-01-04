@@ -871,7 +871,7 @@
             </div>
             
             <div class="sort-section">
-                <h3>Sort By</h3>
+                <h3>Sort Mods</h3>
                 <div class="sort-controls">
                     <select class="sort-select" id="sortSelect" onchange="sortMods()">
                         <option value="alpha">Alphabetically</option>
@@ -882,6 +882,17 @@
                         <button class="sort-dir-btn active" id="sortAsc" onclick="setSortDirection('asc')">↑ ASC</button>
                         <button class="sort-dir-btn" id="sortDesc" onclick="setSortDirection('desc')">↓ DESC</button>
                     </div>
+                </div>
+            </div>
+            
+            <div class="sort-section">
+                <h3>Sort Scripts</h3>
+                <div class="sort-controls">
+                    <select class="sort-select" id="scriptSortSelect" onchange="sortScripts()">
+                        <option value="alpha">Alphabetically</option>
+                        <option value="issues">Total Issues</option>
+                        <option value="impact">Performance Impact</option>
+                    </select>
                 </div>
             </div>
             
@@ -1231,6 +1242,7 @@
             document.getElementById('sortAsc').classList.toggle('active', dir === 'asc');
             document.getElementById('sortDesc').classList.toggle('active', dir === 'desc');
             sortMods();
+            sortScripts();
         }
 
         function getModImpactScore(mod) {
@@ -1291,6 +1303,73 @@
             
             // reorder DOM elements
             mods.forEach(mod => container.appendChild(mod));
+        }
+
+        function getScriptImpactScore(scriptSection) {
+            const findings = scriptSection.querySelectorAll('.finding:not(.hidden)');
+            let score = 0;
+            findings.forEach(f => {
+                const impact = f.dataset.impact || 'low';
+                switch(impact) {
+                    case 'critical': score += 4; break;
+                    case 'high': score += 3; break;
+                    case 'medium': score += 2; break;
+                    case 'low': score += 1; break;
+                }
+            });
+            return score;
+        }
+
+        function getScriptIssueCount(scriptSection) {
+            return scriptSection.querySelectorAll('.finding:not(.hidden)').length;
+        }
+
+        function sortScripts() {
+            const sortBy = document.getElementById('scriptSortSelect').value;
+            
+            // sort scripts within each mod
+            document.querySelectorAll('.mod-card').forEach(mod => {
+                const content = mod.querySelector('.collapsible-content');
+                if (!content) return;
+                
+                const scripts = Array.from(content.querySelectorAll('.file-section'));
+                if (scripts.length <= 1) return;
+                
+                scripts.sort((a, b) => {
+                    let valA, valB;
+                    
+                    switch(sortBy) {
+                        case 'alpha':
+                            valA = (a.querySelector('h3')?.textContent || '').toLowerCase();
+                            valB = (b.querySelector('h3')?.textContent || '').toLowerCase();
+                            break;
+                        case 'issues':
+                            valA = getScriptIssueCount(a);
+                            valB = getScriptIssueCount(b);
+                            break;
+                        case 'impact':
+                            valA = getScriptImpactScore(a);
+                            valB = getScriptImpactScore(b);
+                            break;
+                        default:
+                            valA = (a.querySelector('h3')?.textContent || '').toLowerCase();
+                            valB = (b.querySelector('h3')?.textContent || '').toLowerCase();
+                    }
+                    
+                    let result;
+                    if (typeof valA === 'string') {
+                        result = valA.localeCompare(valB);
+                    } else {
+                        result = valA - valB;
+                    }
+                    
+                    // use same direction as mod sort
+                    return currentSortDirection === 'desc' ? -result : result;
+                });
+                
+                // reorder scripts within this mod
+                scripts.forEach(script => content.appendChild(script));
+            });
         }
     </script>
     {% endblock %}

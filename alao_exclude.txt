@@ -1,0 +1,2 @@
+# Allows to exclude some mods from fixes/reports
+VANILLA_SCRIPTS

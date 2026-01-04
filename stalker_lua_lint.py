@@ -174,6 +174,12 @@ def main():
         action="store_true",
         help="Process path directly (single .script file or folder with scripts, no gamedata/scripts structure)"
     )
+    parser.add_argument(
+        "--exclude",
+        type=str,
+        default=None,
+        help="Path to file containing mod names to exclude (one per line)"
+    )
 
     args = parser.parse_args()
 
@@ -199,6 +205,29 @@ def main():
         mods = discover_direct(mods_path)
     else:
         mods = discover_mods(mods_path)
+
+    # apply exclude list if provided
+    excluded_mods = set()
+    if args.exclude:
+        exclude_path = Path(args.exclude)
+        if exclude_path.exists():
+            try:
+                with open(exclude_path, 'r', encoding='utf-8') as f:
+                    for line in f:
+                        line = line.strip()
+                        if line and not line.startswith('#'):
+                            excluded_mods.add(line)
+                
+                if excluded_mods:
+                    before_count = len(mods)
+                    mods = {name: scripts for name, scripts in mods.items() if name not in excluded_mods}
+                    excluded_count = before_count - len(mods)
+                    if excluded_count > 0:
+                        print(f"Excluded {excluded_count} mods from {exclude_path.name}")
+            except Exception as e:
+                print(f"Warning: Could not read exclude file: {e}")
+        else:
+            print(f"Warning: Exclude file not found: {exclude_path}")
 
     if not mods:
         if args.direct:
