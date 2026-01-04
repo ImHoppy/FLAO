@@ -404,86 +404,102 @@ def main():
                 fix_types.append("EXPERIMENTAL")
             print(f"{fix_msg} ({', '.join(fix_types)}) with {num_workers} workers...")
 
-            # prepare work items
-            work_items = [
-                (script_path, args.backup, args.fix_debug, args.fix_yellow, args.experimental)
-                for mod_name, script_path in all_files
-            ]
+            # prepare work items, skip files that already have .bak (prevent double-fix)
+            work_items = []
+            skipped_has_backup = 0
+            for mod_name, script_path in all_files:
+                bak_path = script_path.with_suffix(script_path.suffix + '.bak')
+                if bak_path.exists():
+                    skipped_has_backup += 1
+                    if args.verbose:
+                        print(f"  [SKIP] {script_path.name} - backup already exists")
+                else:
+                    work_items.append(
+                        (script_path, args.backup, args.fix_debug, args.fix_yellow, args.experimental)
+                    )
+            
+            if skipped_has_backup > 0 and not args.quiet:
+                print(f"Skipping {skipped_has_backup} files with existing backups (already processed)")
+                print(f"Tip: Use --revert first if you want to re-process, or --clean-backups to remove old backups\n")
+            
+            if not work_items:
+                if not args.quiet:
+                    print("No files to process (all have existing backups).")
+            else:
+                completed = 0
+                pool_crashed = False
+                processed_paths = set()
 
-            completed = 0
-            pool_crashed = False
-            processed_paths = set()
+                try:
+                    with ProcessPoolExecutor(max_workers=num_workers) as executor:
+                        futures = {
+                            executor.submit(
+                                transform_file_worker,
+                                item): item for item in work_items}
 
-            try:
-                with ProcessPoolExecutor(max_workers=num_workers) as executor:
-                    futures = {
-                        executor.submit(
-                            transform_file_worker,
-                            item): item for item in work_items}
+                        for future in as_completed(futures):
+                            completed += 1
+                            if not args.quiet:
+                                progress = completed / len(work_items) * 100
+                                print(
+                                    f"\r[{progress:5.1f}%] Fixing {completed}/{len(work_items)}...", end="", flush=True)
 
-                    for future in as_completed(futures):
+                            try:
+                                script_path, modified, edit_count, error = future.result()
+                                processed_paths.add(futures[future][0])
+                            except BrokenExecutor:
+                                pool_crashed = True
+                                break
+                            except Exception as e:
+                                if args.verbose:
+                                    print(f"\n  [ERROR] {e}")
+                                continue
+
+                            if error:
+                                if args.verbose:
+                                    print(f"\n  [FIX ERROR] {script_path.name}: {error}")
+                            elif modified:
+                                files_modified += 1
+                                total_edits += edit_count
+                                if args.verbose:
+                                    print(f"\n  [FIXED] {script_path.name} ({edit_count} edits)")
+                except BrokenExecutor:
+                    pool_crashed = True
+
+                if pool_crashed:
+                    if not args.quiet:
+                        print(f"\n\nWorker crashed. Falling back to single-threaded mode...")
+
+                    # process remaining files sequentially
+                    for item in work_items:
+                        if item[0] in processed_paths:
+                            continue
+                        script_path = item[0]
                         completed += 1
                         if not args.quiet:
-                            progress = completed / len(all_files) * 100
+                            progress = completed / len(work_items) * 100
                             print(
-                                f"\r[{progress:5.1f}%] Fixing {completed}/{len(all_files)}...", end="", flush=True)
+                                f"\r[{progress:5.1f}%] Fixing {completed}/{len(work_items)}...", end="", flush=True)
 
                         try:
-                            script_path, modified, edit_count, error = future.result()
-                            processed_paths.add(futures[future][0])
-                        except BrokenExecutor:
-                            pool_crashed = True
-                            break
+                            modified, _, edit_count = transform_file(
+                                script_path,
+                                backup=args.backup,
+                                fix_debug=args.fix_debug,
+                                fix_yellow=args.fix_yellow,
+                                experimental=args.experimental,
+                            )
+                            if modified:
+                                files_modified += 1
+                                total_edits += edit_count
+                                if args.verbose:
+                                    print(f"\n  [FIXED] {script_path.name} ({edit_count} edits)")
                         except Exception as e:
                             if args.verbose:
-                                print(f"\n  [ERROR] {e}")
-                            continue
+                                print(f"\n  [FIX ERROR] {script_path.name}: {e}")
 
-                        if error:
-                            if args.verbose:
-                                print(f"\n  [FIX ERROR] {script_path.name}: {error}")
-                        elif modified:
-                            files_modified += 1
-                            total_edits += edit_count
-                            if args.verbose:
-                                print(f"\n  [FIXED] {script_path.name} ({edit_count} edits)")
-            except BrokenExecutor:
-                pool_crashed = True
-
-            if pool_crashed:
                 if not args.quiet:
-                    print(f"\n\nWorker crashed. Falling back to single-threaded mode...")
-
-                # process remaining files sequentially
-                for item in work_items:
-                    if item[0] in processed_paths:
-                        continue
-                    script_path = item[0]
-                    completed += 1
-                    if not args.quiet:
-                        progress = completed / len(all_files) * 100
-                        print(
-                            f"\r[{progress:5.1f}%] Fixing {completed}/{len(all_files)}...", end="", flush=True)
-
-                    try:
-                        modified, _, edit_count = transform_file(
-                            script_path,
-                            backup=args.backup,
-                            fix_debug=args.fix_debug,
-                            fix_yellow=args.fix_yellow,
-                            experimental=args.experimental,
-                        )
-                        if modified:
-                            files_modified += 1
-                            total_edits += edit_count
-                            if args.verbose:
-                                print(f"\n  [FIXED] {script_path.name} ({edit_count} edits)")
-                    except Exception as e:
-                        if args.verbose:
-                            print(f"\n  [FIX ERROR] {script_path.name}: {e}")
-
-            if not args.quiet:
-                print("\r" + " " * 60 + "\r", end="")
+                    print("\r" + " " * 60 + "\r", end="")
 
     # output results
     if not args.quiet:
