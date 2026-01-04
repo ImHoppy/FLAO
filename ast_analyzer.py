@@ -23,6 +23,8 @@ from typing import List, Dict, Set, Optional, Tuple, Any
 from dataclasses import dataclass, field
 from pathlib import Path
 from collections import defaultdict
+import sys
+import io
 
 from models import Finding
 
@@ -176,7 +178,7 @@ class ASTAnalyzer:
         self.loop_depth: int = 0
         self.function_depth: int = 0
 
-    def analyze_file(self, file_path: Path) -> List[Finding]:
+    def analyze_file(self, file_path: Path, verbose: bool = False) -> List[Finding]:
         """Analyze a Lua file and return findings."""
         self.reset()
         self.file_path = file_path
@@ -189,9 +191,16 @@ class ASTAnalyzer:
         self.source_lines = self.source.splitlines()
 
         try:
-            tree = ast.parse(self.source)
+            # suppress ANTLR lexer error output during parse
+            old_stderr = sys.stderr
+            sys.stderr = io.StringIO()
+            try:
+                tree = ast.parse(self.source)
+            finally:
+                sys.stderr = old_stderr
         except Exception:
-            # parse error, skip
+            if verbose:
+                print(f"  [WARN] Failed to parse: {file_path}", file=sys.stderr)
             return []
 
         # create global scope
