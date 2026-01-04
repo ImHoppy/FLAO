@@ -133,6 +133,8 @@ dmypy.json
 # Custom
 *.zip
 /report.html
+/report.json
+/report.txt
 _untracked
 extracted
 test
