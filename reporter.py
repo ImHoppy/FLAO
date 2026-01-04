@@ -324,6 +324,29 @@ class Reporter:
             'mod_breakdowns': mod_breakdowns,
         }
 
+    def _sanitize_details(self, details: dict) -> dict:
+        """Convert any non-serializable objects in details to strings."""
+        if not details:
+            return {}
+        
+        # skip internal fields that aren't useful in reports
+        skip_keys = {'node', 'nodes', 'ast_node', 'call_node'}
+        
+        result = {}
+        for key, value in details.items():
+            if key in skip_keys:
+                continue
+            if isinstance(value, (str, int, float, bool, type(None))):
+                result[key] = value
+            elif isinstance(value, (list, tuple)):
+                result[key] = [str(v) if not isinstance(v, (str, int, float, bool, type(None))) else v for v in value]
+            elif isinstance(value, dict):
+                result[key] = self._sanitize_details(value)
+            else:
+                # convert AST nodes and other objects to string
+                result[key] = str(value)
+        return result
+
     def _save_json(self, path: Path, verbose: bool = False):
         """Save as JSON."""
         if verbose:
@@ -355,7 +378,7 @@ class Reporter:
                         'pattern': f.pattern_name,
                         'severity': f.severity,
                         'description': f.description,
-                        'details': f.details
+                        'details': self._sanitize_details(f.details)
                     }
                     for f in findings
                 ]
@@ -363,7 +386,7 @@ class Reporter:
         if verbose:
             print("\r  Writing file...              ", end="", flush=True)
 
-        path.write_text(json.dumps(data, indent=2), encoding='utf-8')
+        path.write_text(json.dumps(data, indent=2, default=str), encoding='utf-8')
 
         if verbose:
             print("\r  Done.                        ")
