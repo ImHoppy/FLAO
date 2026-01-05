@@ -463,6 +463,18 @@ class ASTTransformer:
         if any(stripped_access.startswith(kw) for kw in control_keywords):
             return
         
+        # SAFETY CHECK: don't wrap incomplete statements (multi-line function calls, etc.)
+        # check for unbalanced parentheses - if line has more '(' than ')', it continues on next line
+        open_parens = stripped_access.count('(')
+        close_parens = stripped_access.count(')')
+        if open_parens > close_parens:
+            return
+        
+        # SAFETY CHECK: don't wrap lines ending with opening constructs
+        rstripped = stripped_access.rstrip()
+        if rstripped.endswith('(') or rstripped.endswith(',') or rstripped.endswith('..'):
+            return
+        
         # determine indent from the access line
         indent = ''
         for ch in access_line_text:
