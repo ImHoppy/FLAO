@@ -636,6 +636,27 @@ class ASTTransformer:
                 return  # pattern not on its own line, abort entire transformation
             
             expr = match.group(2).rstrip()
+            
+            # Bug #31 fix: check if expr references the variable itself
+            # e.g. (var == "" and "" or ", ") - this would break after transformation
+            # because 'var' won't exist until after table.concat
+            if re.search(rf'\b{re.escape(var)}\b', expr):
+                # try to replace common patterns like (var == "" and X or Y) with (#parts == 0 and X or Y)
+                empty_check = re.compile(
+                    rf'\(\s*{re.escape(var)}\s*==\s*""\s+and\s+',
+                    re.IGNORECASE
+                )
+                if empty_check.search(expr):
+                    # replace var == "" with #parts_var == 0
+                    expr = re.sub(
+                        rf'\b{re.escape(var)}\s*==\s*""',
+                        f'#{parts_var} == 0',
+                        expr
+                    )
+                else:
+                    # can't safely transform, abort
+                    return
+            
             new_line = f'{line_indent}{parts_var}[#{parts_var}+1] = {expr}\n'
             concat_replacements.append((line_start, line_end, new_line))
         
