@@ -631,7 +631,12 @@ class ASTTransformer:
                     real_obj_name = 'self.' + sanitized_obj_name[5:]
                 else:
                     real_obj_name = sanitized_obj_name
-            
+
+            # SAFETY CHECK: skip if object is an indexed expression (e.g., t[a], arr[i])
+            # These can't be converted to valid variable names
+            if '[' in real_obj_name or ']' in real_obj_name:
+                return
+
             # generate cache variable name (always use sanitized for variable)
             if method_name == 'section':
                 new_name = f'{sanitized_obj_name}_sec'
