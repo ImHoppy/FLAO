@@ -1459,7 +1459,9 @@ class ASTAnalyzer:
                 init_line = None
                 is_safe = False
                 
-                if loop_scope:
+                # SAFETY: don't auto-fix nested loops (loop_depth > 1) because we can't
+                # reliably determine which loop's end to place table.concat after
+                if loop_scope and concat_info.loop_depth == 1:
                     # look for var = "" or var = '' IMMEDIATELY before the loop
                     # must be: within 3 lines, NOT inside any loop, and must be local declaration
                     for assign in self.assigns:
