@@ -62,6 +62,7 @@ python stalker_lua_lint.py [path_to_mods] [options]
 # Backup Management
 --backup / --no-backup - Create .alao-bak files before modifying (default: True)
 --list-backups - List all .alao-bak backup files
+--backup-all-scripts - Backup ALL scripts to a zip archive before modifications
 
 # Danger Zone (do not use this)
 --clean-backups - Remove all .alao-bak backup files
@@ -159,6 +160,12 @@ python stalker_lua_lint.py /path/to/mods --clean-backups
 # Disable backups (NOT RECOMMENDED)
 python stalker_lua_lint.py /path/to/mods --fix --no-backup
 ```
+
+## User guide
+☢️ I've made a Google Docs guide on how to use ALAO - https://docs.google.com/document/d/1isS0Gn9MWrJZ6eSYjh2cFSC8NfPcdWqobB9RdHkAxXI/edit?usp=sharing
+
+Make sure to thoroughly read it all, so you understand how it works.  
+It's kinda verbose, but I guess it's a good thing.
 
 ## Author
 
