@@ -1,7 +1,7 @@
 """
 FLAO main orchestrator script (entry point).
 Originally written by: Abraham (Priler) as ALAO
-Refactored for FiveM/GTA 5 by: FLAO Contributors
+Refactored for FiveM/GTA 5 by: ook3d
 
 AST-based Lua parser & analyzer for FiveM/GTA 5 resources.
 Automatically detects and fixes common Lua performance issues.

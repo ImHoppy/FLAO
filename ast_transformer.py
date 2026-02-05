@@ -843,6 +843,118 @@ class ASTTransformer:
             # This pattern should not be auto-fixed; it's a suggestion to use vector math
             # Skip automatic caching for this one
             return
+        # Entity properties
+        elif pattern == 'repeated_GetEntityVelocity':
+            cache_line = 'local velocity = GetEntityVelocity(entity)'
+            new_name = 'velocity'
+            call_pattern = 'GetEntityVelocity'
+        elif pattern == 'repeated_GetEntityRotation':
+            cache_line = 'local rotation = GetEntityRotation(entity)'
+            new_name = 'rotation'
+            call_pattern = 'GetEntityRotation'
+        elif pattern == 'repeated_GetEntityHealth':
+            cache_line = 'local health = GetEntityHealth(entity)'
+            new_name = 'health'
+            call_pattern = 'GetEntityHealth'
+        elif pattern == 'repeated_GetEntityMaxHealth':
+            cache_line = 'local maxHealth = GetEntityMaxHealth(entity)'
+            new_name = 'maxHealth'
+            call_pattern = 'GetEntityMaxHealth'
+        elif pattern == 'repeated_GetEntitySpeed':
+            cache_line = 'local speed = GetEntitySpeed(entity)'
+            new_name = 'speed'
+            call_pattern = 'GetEntitySpeed'
+        elif pattern == 'repeated_GetEntityForwardVector':
+            cache_line = 'local forward = GetEntityForwardVector(entity)'
+            new_name = 'forward'
+            call_pattern = 'GetEntityForwardVector'
+        # Vehicle natives
+        elif pattern == 'repeated_GetVehicleClass':
+            cache_line = 'local vehicleClass = GetVehicleClass(vehicle)'
+            new_name = 'vehicleClass'
+            call_pattern = 'GetVehicleClass'
+        elif pattern == 'repeated_GetVehicleEngineHealth':
+            cache_line = 'local engineHealth = GetVehicleEngineHealth(vehicle)'
+            new_name = 'engineHealth'
+            call_pattern = 'GetVehicleEngineHealth'
+        elif pattern == 'repeated_GetVehicleBodyHealth':
+            cache_line = 'local bodyHealth = GetVehicleBodyHealth(vehicle)'
+            new_name = 'bodyHealth'
+            call_pattern = 'GetVehicleBodyHealth'
+        elif pattern == 'repeated_GetVehicleNumberPlateText':
+            cache_line = 'local plateText = GetVehicleNumberPlateText(vehicle)'
+            new_name = 'plateText'
+            call_pattern = 'GetVehicleNumberPlateText'
+        elif pattern == 'repeated_GetVehiclePedIsUsing':
+            cache_line = 'local vehicle = GetVehiclePedIsUsing(ped)'
+            new_name = 'vehicle'
+            call_pattern = 'GetVehiclePedIsUsing'
+        # Ped/Player natives
+        elif pattern == 'repeated_GetSelectedPedWeapon':
+            cache_line = 'local weapon = GetSelectedPedWeapon(ped)'
+            new_name = 'weapon'
+            call_pattern = 'GetSelectedPedWeapon'
+        elif pattern == 'repeated_GetPedArmour':
+            cache_line = 'local armour = GetPedArmour(ped)'
+            new_name = 'armour'
+            call_pattern = 'GetPedArmour'
+        elif pattern == 'repeated_IsPedInAnyVehicle':
+            cache_line = 'local inVehicle = IsPedInAnyVehicle(ped, false)'
+            new_name = 'inVehicle'
+            call_pattern = 'IsPedInAnyVehicle'
+        elif pattern == 'repeated_GetPlayerWantedLevel':
+            cache_line = 'local wantedLevel = GetPlayerWantedLevel(playerId)'
+            new_name = 'wantedLevel'
+            call_pattern = 'GetPlayerWantedLevel'
+        elif pattern == 'repeated_GetPedMaxHealth':
+            cache_line = 'local pedMaxHealth = GetPedMaxHealth(ped)'
+            new_name = 'pedMaxHealth'
+            call_pattern = 'GetPedMaxHealth'
+        # ox_lib functions
+        elif pattern == 'repeated_lib.getClosestPlayer':
+            cache_line = 'local closestPlayer, closestPlayerDist = lib.getClosestPlayer(coords, maxDist, includePlayer)'
+            new_name = 'closestPlayer'
+            call_pattern = 'lib.getClosestPlayer'
+        elif pattern == 'repeated_lib.getClosestPed':
+            cache_line = 'local closestPed, closestPedDist = lib.getClosestPed(coords, maxDist)'
+            new_name = 'closestPed'
+            call_pattern = 'lib.getClosestPed'
+        elif pattern == 'repeated_lib.getClosestVehicle':
+            cache_line = 'local closestVehicle, closestVehicleDist = lib.getClosestVehicle(coords, maxDist)'
+            new_name = 'closestVehicle'
+            call_pattern = 'lib.getClosestVehicle'
+        elif pattern == 'repeated_lib.getClosestObject':
+            cache_line = 'local closestObject, closestObjectDist = lib.getClosestObject(coords, maxDist)'
+            new_name = 'closestObject'
+            call_pattern = 'lib.getClosestObject'
+        elif pattern == 'repeated_lib.getNearbyPlayers':
+            cache_line = 'local nearbyPlayers = lib.getNearbyPlayers(coords, maxDist, includePlayer)'
+            new_name = 'nearbyPlayers'
+            call_pattern = 'lib.getNearbyPlayers'
+        elif pattern == 'repeated_lib.getNearbyPeds':
+            cache_line = 'local nearbyPeds = lib.getNearbyPeds(coords, maxDist)'
+            new_name = 'nearbyPeds'
+            call_pattern = 'lib.getNearbyPeds'
+        elif pattern == 'repeated_lib.getNearbyVehicles':
+            cache_line = 'local nearbyVehicles = lib.getNearbyVehicles(coords, maxDist)'
+            new_name = 'nearbyVehicles'
+            call_pattern = 'lib.getNearbyVehicles'
+        elif pattern == 'repeated_lib.getNearbyObjects':
+            cache_line = 'local nearbyObjects = lib.getNearbyObjects(coords, maxDist)'
+            new_name = 'nearbyObjects'
+            call_pattern = 'lib.getNearbyObjects'
+        elif pattern == 'repeated_lib.getCoreObject':
+            cache_line = 'local core = lib.getCoreObject()'
+            new_name = 'core'
+            call_pattern = 'lib.getCoreObject'
+        elif pattern == 'repeated_lib.getPlayer':
+            cache_line = 'local playerData = lib.getPlayer()'
+            new_name = 'playerData'
+            call_pattern = 'lib.getPlayer'
+        elif pattern == 'repeated_lib.progressActive':
+            cache_line = 'local isProgressActive = lib.progressActive()'
+            new_name = 'isProgressActive'
+            call_pattern = 'lib.progressActive'
         elif pattern.endswith('_story_id()') or pattern.endswith('_section()') or pattern.endswith('_id()') or pattern.endswith('_clsid()'):
             # dynamic method caching: repeated_obj_section(), repeated_item_id(), etc
             # extract object name and method from pattern: repeated_obj_section() -> obj, section

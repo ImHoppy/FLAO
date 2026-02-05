@@ -74,6 +74,29 @@ CACHEABLE_MODULE_FUNCS = {
     'bit': frozenset({
         'band', 'bor', 'bxor', 'bnot', 'lshift', 'rshift', 'arshift', 'rol', 'ror',
     }),
+    # ox_lib - popular FiveM utility library
+    'lib': frozenset({
+        # Utility functions
+        'print', 'notify', 'locale', 'callback', 'onCache',
+        # Zone functions
+        'zones', 'points',
+        # UI functions
+        'showContext', 'hideContext', 'getOpenContextMenu',
+        'registerContext', 'showTextUI', 'hideTextUI', 'isTextUIOpen',
+        'progressBar', 'progressCircle', 'cancelProgress', 'progressActive',
+        'inputDialog', 'alertDialog', 'confirmDialog',
+        'registerRadial', 'addRadialItem', 'removeRadialItem', 'clearRadialItems',
+        'disableRadial', 'getCurrentRadialId', 'hideRadial',
+        'showMenu', 'hideMenu', 'getOpenMenu', 'setMenuOptions', 'registerMenu',
+        # Math/vector utilities
+        'getRandomVector', 'getClosestPlayer', 'getClosestPed', 'getClosestVehicle', 'getClosestObject',
+        'getNearbyPlayers', 'getNearbyPeds', 'getNearbyVehicles', 'getNearbyObjects',
+        # Player utilities
+        'getPlayer', 'getCoreObject', 'hasExport',
+        # Streaming
+        'requestAnimDict', 'requestAnimSet', 'requestModel', 'requestNamedPtfxAsset',
+        'requestScaleformMovie', 'requestStreamedTextureDict', 'requestWeaponAsset',
+    }),
 }
 
 # Debug/logging function patterns
@@ -87,6 +110,22 @@ DEBUG_FUNCTIONS = frozenset({
 DIRECT_REPLACEMENT_FUNCS = frozenset({
     'table.insert', 'table.getn', 'string.len',
 })
+
+# ox_lib cache replacements - native calls that can use ox_lib's cache system
+# Format: native_call -> (cache_property, description, args_pattern)
+# args_pattern: None = no args, 'ped' = PlayerPedId()/cache.ped arg, 'player' = PlayerId() arg
+OXLIB_CACHE_REPLACEMENTS = {
+    'PlayerPedId': ('cache.ped', 'Player ped entity', None),
+    'PlayerId': ('cache.playerId', 'Player ID', None),
+    'GetPlayerServerId': ('cache.serverId', 'Server ID', 'player'),  # GetPlayerServerId(PlayerId())
+    'GetVehiclePedIsIn': ('cache.vehicle', 'Current vehicle (false for last)', 'ped_false'),
+    'GetEntityCoords': ('cache.coords', 'Player coordinates', 'ped'),
+    'GetEntityHeading': ('cache.heading', 'Player heading', 'ped'),
+    'GetSelectedPedWeapon': ('cache.weapon', 'Current weapon hash', 'ped'),
+    # Additional cache properties
+    'GetVehiclePedIsUsing': ('cache.vehicle', 'Current vehicle', 'ped'),
+    'IsPedInAnyVehicle': ('cache.vehicle ~= nil', 'Vehicle check (cache.vehicle is false when not in vehicle)', 'ped'),
+}
 
 # Functions/properties that can return nil/0/false - calling methods on these without
 # checks can cause errors or unexpected behavior
@@ -303,6 +342,11 @@ class ASTAnalyzer:
         self.local_vars: Dict[Tuple[int, str], LocalVarInfo] = {}  # (scope_id, name) -> info
         self.local_funcs: Dict[Tuple[int, str], LocalVarInfo] = {}  # (scope_id, name) -> info
         self.callback_registrations: Set[str] = set()  # names registered as callbacks
+
+        # Lua optimization tracking
+        self.functions_in_loops: List[Tuple[int, str, Node]] = []  # (line, name, node)
+        self.length_ops_in_loops: List[Tuple[int, str, Scope]] = []  # (line, table_name, scope)
+        self.forin_loops: List[Tuple[int, str, List[str], Node]] = []  # (line, iterator, targets, node)
 
         self.source_lines: List[str] = []
         self.source: str = ""
@@ -591,6 +635,10 @@ class ASTAnalyzer:
         line = self._get_line(node)
         func_name = self._node_to_string(node.name) if node.name else '<anon>'
 
+        # Track functions created inside loops
+        if self.loop_depth > 0:
+            self.functions_in_loops.append((line, func_name, node))
+
         is_hot = func_name in HOT_CALLBACKS
 
         self.function_depth += 1
@@ -612,6 +660,10 @@ class ASTAnalyzer:
         """Handle local function definition."""
         line = self._get_line(node)
         func_name = node.name.id if isinstance(node.name, Name) else '<anon>'
+
+        # Track functions created inside loops
+        if self.loop_depth > 0:
+            self.functions_in_loops.append((line, func_name, node))
 
         # register function name in parent scope
         if self.current_scope:
@@ -681,6 +733,17 @@ class ASTAnalyzer:
     def _visit_Forin(self, node: Forin):
         """Handle for-in loop."""
         line = self._get_line(node)
+
+        # Track for-in loop info for pairs/ipairs analysis
+        iterator_name = ''
+        if node.iter and len(node.iter) > 0:
+            iter_expr = node.iter[0]
+            if isinstance(iter_expr, Call) and isinstance(iter_expr.func, Name):
+                iterator_name = iter_expr.func.id
+
+        target_names = [t.id for t in node.targets if isinstance(t, Name)]
+        if iterator_name:
+            self.forin_loops.append((line, iterator_name, target_names, node))
 
         # visit iterator expression first (outside loop scope)
         for iter_expr in node.iter:
@@ -1197,7 +1260,13 @@ class ASTAnalyzer:
     def _visit_UMinusOp(self, node): self._visit(node.operand)
     def _visit_UBNotOp(self, node): self._visit(node.operand)
     def _visit_ULNotOp(self, node): self._visit(node.operand)
-    def _visit_ULengthOP(self, node): self._visit(node.operand)
+    def _visit_ULengthOP(self, node):
+        # Track length operations in loops
+        if self.loop_depth > 0:
+            operand_name = self._node_to_string(node.operand)
+            line = self._get_line(node)
+            self.length_ops_in_loops.append((line, operand_name, self.current_scope))
+        self._visit(node.operand)
 
     # terminal nodes - no children
     def _visit_Name(self, node): pass
@@ -1226,6 +1295,11 @@ class ASTAnalyzer:
         self._analyze_nil_access()
         self._analyze_dead_code()
         self._analyze_distance_native()  # FiveM-specific
+        self._analyze_oxlib_cache()      # ox_lib cache suggestions
+        # Base Lua optimizations
+        self._analyze_function_in_loop()
+        self._analyze_repeated_length_in_loop()
+        self._analyze_pairs_ipairs_usage()
 
     def _analyze_table_insert(self):
         """Find table.insert(t, v) that can be t[#t+1] = v."""
@@ -1460,6 +1534,37 @@ class ASTAnalyzer:
             'GetVehiclePedIsIn',        # Cache vehicle reference
             'GetEntityHeading',         # Cache heading if used multiple times
             'GetDistanceBetweenCoords', # Should use vector math #(v1-v2) instead
+            # Entity properties
+            'GetEntityVelocity',        # Velocity vector - cache for multiple reads in same tick
+            'GetEntityRotation',        # Rotation vector - cache if used multiple times
+            'GetEntityHealth',          # Health value - cache for multiple reads
+            'GetEntityMaxHealth',       # Max health - rarely changes, cache it
+            'GetEntitySpeed',           # Speed scalar - cache for multiple reads in same tick
+            'GetEntityForwardVector',   # Forward direction vector - cache it
+            # Vehicle natives
+            'GetVehicleClass',          # Vehicle classification - static per vehicle
+            'GetVehicleEngineHealth',   # Engine health - cache for multiple reads
+            'GetVehicleBodyHealth',     # Body health - cache for multiple reads
+            'GetVehicleNumberPlateText', # Plate text - static per vehicle
+            'GetVehiclePedIsUsing',     # Similar to GetVehiclePedIsIn - cache it
+            # Ped/Player natives
+            'GetSelectedPedWeapon',     # Current weapon hash - cache for multiple reads
+            'GetPedArmour',             # Armor value - cache for multiple reads
+            'IsPedInAnyVehicle',        # Boolean vehicle check - cache for multiple reads
+            'GetPlayerWantedLevel',     # Wanted level - cache for multiple reads
+            'GetPedMaxHealth',          # Max health - rarely changes, cache it
+            # ox_lib functions (expensive lookups)
+            'lib.getClosestPlayer',     # Distance calculations - cache result
+            'lib.getClosestPed',        # Distance calculations - cache result
+            'lib.getClosestVehicle',    # Distance calculations - cache result
+            'lib.getClosestObject',     # Distance calculations - cache result
+            'lib.getNearbyPlayers',     # Entity iteration - cache result
+            'lib.getNearbyPeds',        # Entity iteration - cache result
+            'lib.getNearbyVehicles',    # Entity iteration - cache result
+            'lib.getNearbyObjects',     # Entity iteration - cache result
+            'lib.getCoreObject',        # Framework bridge - cache reference
+            'lib.getPlayer',            # Player data lookup - cache result
+            'lib.progressActive',       # UI state check - cache in tight loops
         }
 
         # Method calls that are safe to cache (immutable entity properties)
@@ -2053,6 +2158,160 @@ class ASTAnalyzer:
                     },
                     source_line=self._get_source_line(call.line),
                 ))
+
+    def _analyze_oxlib_cache(self):
+        """Find native calls that could use ox_lib's cache system.
+
+        ox_lib provides a cache system that automatically maintains commonly
+        needed values like cache.ped, cache.vehicle, cache.coords, etc.
+        Using these is more efficient than calling natives repeatedly.
+        """
+        # Track which replacements we've already suggested per scope to avoid duplicates
+        suggested_in_scope: Dict[Tuple[int, str], bool] = {}
+
+        for call in self.calls:
+            if call.full_name not in OXLIB_CACHE_REPLACEMENTS:
+                continue
+
+            cache_prop, description, args_pattern = OXLIB_CACHE_REPLACEMENTS[call.full_name]
+            scope_id = id(call.scope) if call.scope else 0
+
+            # Check if arguments match the expected pattern for cache replacement
+            is_valid_replacement = False
+            replacement_note = ''
+
+            if args_pattern is None:
+                # No args expected (PlayerPedId, PlayerId)
+                is_valid_replacement = len(call.args) == 0
+            elif args_pattern == 'ped':
+                # Expects player ped as argument (GetEntityCoords(PlayerPedId()), etc.)
+                if len(call.args) >= 1:
+                    arg_str = self._node_to_string(call.args[0])
+                    if arg_str in ('PlayerPedId()', 'cache.ped', 'ped'):
+                        is_valid_replacement = True
+                        replacement_note = ' (when arg is player ped)'
+            elif args_pattern == 'ped_false':
+                # GetVehiclePedIsIn(ped, false)
+                if len(call.args) >= 2:
+                    arg0_str = self._node_to_string(call.args[0])
+                    arg1_str = self._node_to_string(call.args[1])
+                    if arg0_str in ('PlayerPedId()', 'cache.ped', 'ped') and arg1_str == 'false':
+                        is_valid_replacement = True
+                        replacement_note = ' (when checking current vehicle)'
+            elif args_pattern == 'player':
+                # GetPlayerServerId(PlayerId())
+                if len(call.args) >= 1:
+                    arg_str = self._node_to_string(call.args[0])
+                    if arg_str in ('PlayerId()', 'cache.playerId'):
+                        is_valid_replacement = True
+
+            if not is_valid_replacement:
+                continue
+
+            # Only suggest once per scope per replacement type
+            key = (scope_id, call.full_name)
+            if key in suggested_in_scope:
+                continue
+            suggested_in_scope[key] = True
+
+            self.findings.append(Finding(
+                pattern_name='oxlib_cache_suggestion',
+                severity='YELLOW',
+                line_num=call.line,
+                message=f'{call.full_name}() -> {cache_prop}{replacement_note}',
+                details={
+                    'native': call.full_name,
+                    'cache_property': cache_prop,
+                    'description': description,
+                    'suggestion': f'Use {cache_prop} from ox_lib cache instead of {call.full_name}()',
+                    'requires': 'ox_lib (https://github.com/overextended/ox_lib)',
+                    'node': call.node,
+                    'in_loop': call.in_loop,
+                },
+                source_line=self._get_source_line(call.line),
+            ))
+
+    def _analyze_function_in_loop(self):
+        """Find function definitions inside loops.
+
+        Creating functions inside loops is expensive because a new closure
+        is allocated on every iteration. The function should be defined
+        outside the loop when possible.
+        """
+        for line, func_name, node in self.functions_in_loops:
+            self.findings.append(Finding(
+                pattern_name='function_in_loop',
+                severity='YELLOW',
+                line_num=line,
+                message=f"Function '{func_name}' defined inside loop - consider hoisting",
+                details={
+                    'func_name': func_name,
+                    'suggestion': 'Define the function outside the loop to avoid repeated closure allocation',
+                    'node': node,
+                },
+                source_line=self._get_source_line(line),
+            ))
+
+    def _analyze_repeated_length_in_loop(self):
+        """Find repeated #table operations in loops that should be cached.
+
+        Using #table multiple times in a loop when the table length doesn't
+        change is wasteful. Cache the length before the loop.
+        """
+        # Group by (scope, table_name) to find repeated uses
+        from collections import defaultdict
+        scope_table_ops: Dict[Tuple[int, str], List[int]] = defaultdict(list)
+
+        for line, table_name, scope in self.length_ops_in_loops:
+            # Use scope id and table name as key
+            scope_id = id(scope) if scope else 0
+            scope_table_ops[(scope_id, table_name)].append(line)
+
+        # Report tables with multiple length operations in the same loop scope
+        for (scope_id, table_name), lines in scope_table_ops.items():
+            if len(lines) >= 2:
+                self.findings.append(Finding(
+                    pattern_name='repeated_length_in_loop',
+                    severity='YELLOW',
+                    line_num=lines[0],
+                    message=f"#{table_name} used {len(lines)} times in loop - cache it",
+                    details={
+                        'table': table_name,
+                        'count': len(lines),
+                        'lines': lines,
+                        'suggestion': f'local {table_name}_len = #{table_name}  -- cache before loop',
+                    },
+                    source_line=self._get_source_line(lines[0]),
+                ))
+
+    def _analyze_pairs_ipairs_usage(self):
+        """Find pairs() usage where ipairs() would be more appropriate.
+
+        When iterating with `for k, v in pairs(t)` but only using `v` (the value),
+        and the table appears to be a sequence (array), ipairs() is faster.
+        Also detect `for _, v in pairs(t)` which strongly suggests ipairs() should be used.
+        """
+        for line, iterator, targets, node in self.forin_loops:
+            if iterator != 'pairs':
+                continue
+
+            # Check if first target is unused (named '_' or starts with '_')
+            if len(targets) >= 1:
+                key_var = targets[0]
+                if key_var == '_' or key_var.startswith('_'):
+                    # `for _, v in pairs(t)` - should probably use ipairs()
+                    self.findings.append(Finding(
+                        pattern_name='pairs_with_unused_key',
+                        severity='YELLOW',
+                        line_num=line,
+                        message=f"pairs() with unused key '{key_var}' - consider ipairs() for sequences",
+                        details={
+                            'iterator': iterator,
+                            'targets': targets,
+                            'suggestion': 'Use ipairs() for sequential tables - it is faster and guarantees order',
+                        },
+                        source_line=self._get_source_line(line),
+                    ))
 
     def _get_source_line(self, line_num: int) -> str:
         """Get source line by number."""
