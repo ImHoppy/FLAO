@@ -1,0 +1,10 @@
+[project]
+name = "flao"
+version = "0.1.0"
+description = "AST-based Lua analyzer and optimizer for FiveM/GTA 5 resources"
+readme = "README.md"
+requires-python = ">=3.8"
+dependencies = [
+    "jinja2>=3.0.0",
+    "luaparser>=3.0.0",
+]
